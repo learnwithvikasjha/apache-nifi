@@ -48,3 +48,14 @@ systemctl start nifi
 ```
 systemctl status nifi
 ```
+
+## Checking Firewall Services
+```
+firewall-cmd --list-service
+```
+
+If port 8443 is not already open, you can run below command to add it:
+```
+sudo firewall-cmd --add-port=8443/tcp --permanent
+sudo firewall-cmd --reload
+```
