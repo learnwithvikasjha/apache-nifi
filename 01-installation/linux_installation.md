@@ -99,3 +99,112 @@ else
 fi
 echo "============================================================"
 ```
+
+# Configure NiFI TLS 
+```
+#!/usr/bin/env bash
+set -euo pipefail
+
+# === CONFIG ===
+NIFI_CONF_DIR="/opt/nifi/conf"
+NIFI_IP="31.97.202.180"
+CERT_PASS="${CERT_PASS:-ChangeMe123!}"   # override by EXPORT CERT_PASS=... if you want
+
+KEYSTORE_FILE="${NIFI_CONF_DIR}/keystore_ip.p12"
+TRUSTSTORE_FILE="${NIFI_CONF_DIR}/truststore_ip.p12"
+CERT_PEM="${NIFI_CONF_DIR}/nifi-cert.pem"
+NIFI_PROPS="${NIFI_CONF_DIR}/nifi.properties"
+
+echo "==> Using NiFi conf dir: ${NIFI_CONF_DIR}"
+echo "==> Using IP: ${NIFI_IP}"
+echo "==> Using certificate password (CERT_PASS): [hidden]"
+
+cd "${NIFI_CONF_DIR}"
+
+echo "==> Backing up existing config and TLS files (if present)..."
+cp "${NIFI_PROPS}" "${NIFI_PROPS}.bak.$(date +%s)"
+cp keystore.p12 keystore.p12.bak.$(date +%s) 2>/dev/null || true
+cp truststore.p12 truststore.p12.bak.$(date +%s) 2>/dev/null || true
+
+echo "==> Generating new PKCS12 keystore with SAN = ip:${NIFI_IP}, dns:localhost ..."
+keytool -genkeypair \
+  -alias nifi \
+  -keyalg RSA \
+  -keysize 4096 \
+  -storetype PKCS12 \
+  -keystore "${KEYSTORE_FILE}" \
+  -storepass "${CERT_PASS}" \
+  -keypass "${CERT_PASS}" \
+  -validity 3650 \
+  -dname "CN=${NIFI_IP}, OU=NiFi, O=MyOrg, L=City, S=State, C=IN" \
+  -ext "san=ip:${NIFI_IP},dns:localhost"
+
+echo "==> Exporting certificate from keystore..."
+keytool -exportcert \
+  -alias nifi \
+  -keystore "${KEYSTORE_FILE}" \
+  -storepass "${CERT_PASS}" \
+  -rfc \
+  -file "${CERT_PEM}"
+
+echo "==> Creating truststore from exported certificate..."
+keytool -importcert \
+  -alias nifi \
+  -file "${CERT_PEM}" \
+  -keystore "${TRUSTSTORE_FILE}" \
+  -storetype PKCS12 \
+  -storepass "${CERT_PASS}" \
+  -noprompt
+
+echo "==> Updating nifi.properties with HTTPS + TLS settings..."
+
+prop_set() {
+  local key="$1"
+  local value="$2"
+  local file="$3"
+
+  if grep -qE "^${key}=" "${file}"; then
+    # Replace existing line
+    sed -i "s|^${key}=.*|${key}=${value}|" "${file}"
+  else
+    # Append new line
+    echo "${key}=${value}" >> "${file}"
+  fi
+}
+
+# Web HTTPS
+prop_set "nifi.web.https.host" "${NIFI_IP}" "${NIFI_PROPS}"
+prop_set "nifi.web.https.port" "8443" "${NIFI_PROPS}"
+
+# Keystore
+prop_set "nifi.security.keystore" "${KEYSTORE_FILE}" "${NIFI_PROPS}"
+prop_set "nifi.security.keystoreType" "PKCS12" "${NIFI_PROPS}"
+prop_set "nifi.security.keystorePasswd" "${CERT_PASS}" "${NIFI_PROPS}"
+prop_set "nifi.security.keyPasswd" "${CERT_PASS}" "${NIFI_PROPS}"
+
+# Truststore
+prop_set "nifi.security.truststore" "${TRUSTSTORE_FILE}" "${NIFI_PROPS}"
+prop_set "nifi.security.truststoreType" "PKCS12" "${NIFI_PROPS}"
+prop_set "nifi.security.truststorePasswd" "${CERT_PASS}" "${NIFI_PROPS}"
+
+echo "==> Done updating nifi.properties."
+
+echo
+echo "============================================================"
+echo "NiFi TLS configuration complete."
+echo "Keystore:   ${KEYSTORE_FILE}"
+echo "Truststore: ${TRUSTSTORE_FILE}"
+echo
+echo "Now restart NiFi:"
+echo "  sudo systemctl restart nifi"
+echo
+echo "Then access NiFi at:"
+echo "  https://${NIFI_IP}:8443/nifi"
+echo "============================================================"
+
+```
+
+# Restart NiFi
+```
+sudo systemctl restart nifi
+```
