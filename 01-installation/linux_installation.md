@@ -216,3 +216,13 @@ sudo rm -f /opt/nifi/conf/keystore_ip.p12 \
            /opt/nifi/conf/truststore_ip.p12 \
            /opt/nifi/conf/nifi-cert.pem
 ```
+
+# Finding NiFi Username/Password from Logs
+```
+grep -E "Generated (Username|Password)" /opt/nifi/logs/nifi-app.log
+```
+
+# Changing NiFi Username/Password
+```
+sudo /opt/nifi/bin/nifi.sh set-single-user-credentials admin 'admin@admin@'
+```
