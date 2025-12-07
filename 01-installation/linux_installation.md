@@ -222,6 +222,17 @@ sudo rm -f /opt/nifi/conf/keystore_ip.p12 \
 grep -E "Generated (Username|Password)" /opt/nifi/logs/nifi-app.log
 ```
 
+or
+
+```
+root@srv905099:/efs/scripts# grep -E "Generated (Username|Password)" /opt/nifi/logs/*.log
+```
+You should see log lines like these:
+```bash
+/opt/nifi/logs/nifi-app_2025-12-06_18.0.log:Generated Username [9bcca30b-b531-4932-ade4-407a8a048495]
+/opt/nifi/logs/nifi-app_2025-12-06_18.0.log:Generated Password [v3vDrGtoisQdQ4dfXmyO6P+5zmBAzwkO]
+```
+
 # Changing NiFi Username/Password
 ```
 sudo /opt/nifi/bin/nifi.sh set-single-user-credentials admin 'admin@admin@'
