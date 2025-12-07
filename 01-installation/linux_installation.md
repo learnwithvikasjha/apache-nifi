@@ -208,3 +208,11 @@ echo "============================================================"
 ```
 sudo systemctl restart nifi
 ```
+
+# Removing the Keystore if required
+
+```
+sudo rm -f /opt/nifi/conf/keystore_ip.p12 \
+           /opt/nifi/conf/truststore_ip.p12 \
+           /opt/nifi/conf/nifi-cert.pem
+```
